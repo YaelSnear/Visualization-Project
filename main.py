@@ -94,7 +94,7 @@ st.markdown("""
         direction: rtl;  /* שינוי כיוון ל-RTL */
         text-align: right; /* יישור לימין */
     }
-    .stCheckbox label {
+    .stCheckbox {
         direction: rtl;  /* שינוי כיוון ל-RTL */
         text-align: right; /* יישור לימין */
     }
@@ -129,7 +129,7 @@ if menu_option == 'Overview':
         }
         </style>
     """, unsafe_allow_html=True)
-    split_by_quarter = st.checkbox("Split by Quarter")
+    split_by_quarter = st.checkbox("חלוקה לרבעונים")
 
     # Filter data based on selected year
     unique_categories = df["ReversedStatisticGroup"].drop_duplicates().tolist()
@@ -330,8 +330,18 @@ elif menu_option == 'Heatmap':
         cmap='YlOrRd',
         edgecolor='black'
     )
-    ax.set_title(
-        f"Heatmap of {selected_crime} for {selected_year}" if selected_year != 'לאורך כל השנים' else f"Heatmap of {selected_crime} (All Years)")
+    if selected_crime == 'all_crimes':
+        reversed_selected_crime = "תוריבעה יגוס לכ"
+    else:
+        reversed_selected_crime = selected_crime[::-1]  # הפיכת מחרוזת ברוורס
+
+    if selected_year == 'לאורך כל השנים':
+        title_year = "2020-2024"
+    else:
+        title_year = str(selected_year)
+
+
+    ax.set_title(f"{title_year} תנש רובע {reversed_selected_crime} לש םוח תפמ", fontdict={'fontsize': 16})
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
 
