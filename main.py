@@ -336,13 +336,14 @@ elif menu_option == 'Heatmap':
     gdf['record_count'] = gdf['MerhavName'].map(merhav_counts).fillna(0)
 
 
+
     #Generate the heatmap
-    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    fig, ax = plt.subplots(1, 1, figsize=(15, 15), dpi=400)
     gdf.plot(
         column='record_count',
         ax=ax,
-        legend=True,
-        legend_kwds={'label': "Number of Records by Police Merhav", 'orientation': "horizontal"},
+        legend=False,
+        # legend_kwds={'label': "Number of Records by Police Merhav", 'orientation': "horizontal"},
         cmap='YlOrRd',
         edgecolor='black'
     )
@@ -356,39 +357,31 @@ elif menu_option == 'Heatmap':
     else:
         title_year = str(selected_year)
 
-    # plot_df = gdf.drop(columns=['geometry'])
-    #
-    # # Convert GeoDataFrame to GeoJSON format
-    # geojson_data = gdf.set_index("unique_id").geometry.__geo_interface__
-    #
-    # # Create the interactive map
-    # fig = px.choropleth_mapbox(
-    #     plot_df,
-    #     geojson=geojson_data,  # GeoJSON for the geometries
-    #     locations="unique_id",  # Use unique_id to match GeoJSON features
-    #     color="record_count",
-    #     hover_name="MerhavName",  # Display region name on hover
-    #     hover_data={"record_count": True},  # Include crime counts
-    #     mapbox_style="carto-positron",
-    #     center={"lat": 31.0461, "lon": 34.8516},  # Center map on Israel
-    #     zoom=7,
-    #     color_continuous_scale="YlOrRd",
-    #     title=f"{selected_year} - {'כל סוגי העבירות' if selected_crime == 'כל סוגי העבירות' else selected_crime[::-1]}"
-    # )
-    #
-    # # Update layout for appearance
-    # fig.update_layout(
-    #     margin={"r": 0, "t": 50, "l": 0, "b": 0},
-    #     title_font=dict(size=20, family='Arial'),
-    # )
-    #
-    # # Display the interactive map in Streamlit
-    # st.plotly_chart(fig, use_container_width=True)
+    ax.axis('off')
+    # Add a custom colorbar on the right
+    sm = plt.cm.ScalarMappable(cmap='YlOrRd',
+                               norm=plt.Normalize(vmin=gdf['record_count'].min(), vmax=gdf['record_count'].max()))
+    sm._A = []  # Required for ScalarMappable
+    cbar = fig.colorbar(sm, ax=ax, orientation="vertical", fraction=0.03,
+                        pad=0.15)  # Adjust pad to move the colorbar to the right
+    cbar.ax.tick_params(labelsize=13)  # Reduce the font size of the tick labels
 
-    ax.set_title(f"{title_year} תנש רובע {reversed_selected_crime} לש םוח תפמ", fontdict={'fontsize': 16})
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
-    st.pyplot(fig)
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    buf.seek(0)
+    encoded = base64.b64encode(buf.read()).decode()
+
+    # Embed the image in Streamlit with adjustable size
+    st.markdown(
+        f"""
+        <div style="display: flex; justify-content: center;">
+            <img src="data:image/png;base64,{encoded}" style="width: 400px; height: 650px;" />
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # st.pyplot(fig)
 
 
 
