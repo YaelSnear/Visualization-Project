@@ -12,6 +12,7 @@ import base64
 import fiona
 import mplcursors
 from shapely.geometry import Point
+import json
 
 
 #set page config
@@ -99,6 +100,7 @@ st.markdown("""
     .stCheckbox {
         direction: rtl;  /* שינוי כיוון ל-RTL */
         text-align: right; /* יישור לימין */
+
     }
     </style>
 """, unsafe_allow_html=True)
@@ -136,12 +138,16 @@ if menu_option == 'Overview':
         div[data-testid="stCheckbox"] * {
             text-align: right !important;
             direction: rtl !important;
+            padding-right: 2.5px !important; /* Add space before the text */
+
+
         }
         </style>
     """, unsafe_allow_html=True)
 
     # Sidebar filters
     year_selected = st.selectbox("בחר שנה:", years, index=0)
+
     split_by_quarter = st.checkbox("חלוקה לרבעונים")
 
     # Filter data based on selected year
@@ -193,7 +199,7 @@ if menu_option == 'Overview':
         ax.set_title("גוס יפל םיעשפה רפסמ", fontsize=16)
         ax.set_xlabel("עשפה גוס", fontsize=14)
         ax.set_ylabel("םיעשפה רפסמ", fontsize=14)
-        ax.tick_params(axis="x", labelrotation=45)
+        ax.tick_params(axis="x", labelrotation=0)
         ax.set_ylim(0, 18000)
 
     plt.tight_layout()
@@ -297,91 +303,63 @@ elif menu_option == 'October 7th':
 elif menu_option == 'Heatmap':
 
     gdb_path = extract_zip()
-    df = pd.read_csv('clean_df_heatmap.csv')
+    df_all = pd.read_csv('clean_df_heatmap.csv')
     layer_name = "PoliceMerhavBoundaries"
     gdf = gpd.read_file(gdb_path, layer=layer_name)
 
-    gdf['unique_id'] = gdf.index.astype(str)  # Add a unique identifier for each geometry
+    # Convert GeoDataFrame to GeoJSON and reproject to WGS84
+    gdf = gdf.to_crs(epsg=4326)
+    gdf['record_count'] = 0  # Initialize record count for mapping
+    gdf['centroid_lat'] = gdf.geometry.centroid.y
+    gdf['centroid_lon'] = gdf.geometry.centroid.x
+    # Sort and prepare dropdown options
+    sorted_crimes = ['כל סוגי העבירות'] + sorted(df_all['StatisticGroup'].unique())
+    sorted_merhavim = ['כל המרחבים'] + sorted(gdf['MerhavName'].unique())
+    years = ['לאורך כל השנים', 2020, 2021, 2022, 2023, 2024]
 
-    sorted_crimes = sorted(df['StatisticGroup'].dropna().unique(), key=lambda x: x) # sort crimes in alphabetical order
-    sorted_crimes = ['כל סוגי העבירות'] + sorted_crimes
-
-    # visualization
-    # Title
+    # Streamlit layout
     st.title("מפת חום - עבירות משטרת ישראל")
 
-    # Dropdown for crime type
-    selected_crime = st.selectbox(
-        "בחר סוג עבירה:",
-        options=sorted_crimes,
-        index=0  # Default to 'all crimes'
-    )
+    # Dropdowns for user selection
+    selected_crime = st.selectbox("בחר סוג עבירה:", options=sorted_crimes)
+    selected_year = st.selectbox("בחר שנה:", options=years)
 
-    # Dropdown for year
-    selected_year = st.selectbox(
-        "בחר שנה:",
-        options=['לאורך כל השנים', 2020, 2021, 2022, 2023, 2024],
-        index=0  # Default to 'all years'
-    )
-
-    # Filter data based on user selection
+    # Filter data based on selections
     if selected_crime == 'כל סוגי העבירות':
-        # Group and sum all crimes by PoliceMerhav
-        merhav_counts = df.groupby('PoliceMerhav').size()
+        filtered_df = df_all
     else:
-        filtered_df = df[df['StatisticGroup'] == selected_crime]
-        merhav_counts = filtered_df['PoliceMerhav'].value_counts()
+        filtered_df = df_all[df_all['StatisticGroup'] == selected_crime]
 
-    # Map the counts to the GeoDataFrame
+    if selected_year != 'לאורך כל השנים':
+        filtered_df = filtered_df[filtered_df['Year'] == int(selected_year)]
+
+    # Summarize counts by Merhav
+    merhav_counts = filtered_df['PoliceMerhav'].value_counts()
     gdf['record_count'] = gdf['MerhavName'].map(merhav_counts).fillna(0)
 
-
-
-    #Generate the heatmap
-    fig, ax = plt.subplots(1, 1, figsize=(15, 15), dpi=400)
-    gdf.plot(
-        column='record_count',
-        ax=ax,
-        legend=False,
-        # legend_kwds={'label': "Number of Records by Police Merhav", 'orientation': "horizontal"},
-        cmap='YlOrRd',
-        edgecolor='black'
-    )
-    if selected_crime == 'all_crimes':
-        reversed_selected_crime = "תוריבעה יגוס לכ"
-    else:
-        reversed_selected_crime = selected_crime[::-1]  # הפיכת מחרוזת ברוורס
-
-    if selected_year == 'לאורך כל השנים':
-        title_year = "2020-2024"
-    else:
-        title_year = str(selected_year)
-
-    ax.axis('off')
-    # Add a custom colorbar on the right
-    sm = plt.cm.ScalarMappable(cmap='YlOrRd',
-                               norm=plt.Normalize(vmin=gdf['record_count'].min(), vmax=gdf['record_count'].max()))
-    sm._A = []  # Required for ScalarMappable
-    cbar = fig.colorbar(sm, ax=ax, orientation="vertical", fraction=0.03,
-                        pad=0.15)  # Adjust pad to move the colorbar to the right
-    cbar.ax.tick_params(labelsize=13)  # Reduce the font size of the tick labels
-
-    buf = BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
-    buf.seek(0)
-    encoded = base64.b64encode(buf.read()).decode()
-
-    # Embed the image in Streamlit with adjustable size
-    st.markdown(
-        f"""
-        <div style="display: flex; justify-content: center;">
-            <img src="data:image/png;base64,{encoded}" style="width: 400px; height: 650px;" />
-        </div>
-        """,
-        unsafe_allow_html=True
+    fig = px.choropleth_mapbox(
+        gdf,
+        geojson=json.loads(gdf.to_json()),
+        locations=gdf.index,
+        color="record_count",
+        hover_name="MerhavName",
+        hover_data={"record_count": True, gdf.index.name: False},  # Show record count, hide index
+        mapbox_style="carto-positron",
+        center={"lat": 31.5, "lon": 34.8},  # Centered on Israel
+        zoom=6.3,  # Adjusted zoom level to fit Israel
+        color_continuous_scale="YlOrRd",
+        title=f"{selected_year} מפת עבירות" if selected_year != 'לאורך כל השנים' else "2020-2024 מפת עבירות"
     )
 
-    # st.pyplot(fig)
-
-
-
+    # Update layout for vertical orientation
+    fig.update_layout(
+        mapbox=dict(
+            center={"lat": 31.5, "lon": 34.8},  # Center on Israel
+            zoom=6.2,  # Zoom out slightly to show entire Israel
+            style="carto-positron"
+        ),
+        height=800,  # Taller map for vertical orientation
+        width=500  # Narrower map
+    )
+    # Display the map
+    st.plotly_chart(fig, use_container_width=True)
