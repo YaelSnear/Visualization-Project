@@ -10,6 +10,8 @@ import geopandas as gpd
 from io import BytesIO
 import base64
 import fiona
+import mplcursors
+from shapely.geometry import Point
 
 
 #set page config
@@ -110,30 +112,41 @@ if menu_option == 'Overview':
     df = load_data()
     # OVERVIEW VISUALIZATION
     # Determine Y-axis max value before filtering
-    years = ["All Years (mean)"] + sorted(df["Year"].dropna().unique().astype(int).tolist())
-    # Sidebar filters
-    year_selected = st.selectbox(":בחר שנה", years, index=0)
+    years = ["כל השנים (ממוצע)"] + sorted(df["Year"].dropna().unique().astype(int).tolist())
     st.markdown("""
         <style>
-        .stSelectbox [data-baseweb="select"] {
-            width: 200px !important;
+        /* Align the selectbox text and menu to the right */
+        div[data-testid="stSelectbox"] * {
+            text-align: right !important; /* Align all text inside the dropdown */
+            direction: rtl !important;   /* Force right-to-left text direction */
+        }
+
+        /* Set a shorter width for the selectbox */
+        div[data-testid="stSelectbox"] > div {
+            width: 200px; 
+        }
+
+        /* Align the dropdown to the right */
+        div[data-testid="stSelectbox"] {
             text-align: right;
             direction: rtl;
         }
-        .stCheckbox label {
-            text-align: right;  /* Align checkbox label to the right */
-            direction: rtl;
-        }
-        .plotly-title {
-            text-align: right !important;  /* Align plotly title to the right */
+
+        /* Align checkbox text */
+        div[data-testid="stCheckbox"] * {
+            text-align: right !important;
+            direction: rtl !important;
         }
         </style>
     """, unsafe_allow_html=True)
+
+    # Sidebar filters
+    year_selected = st.selectbox("בחר שנה:", years, index=0)
     split_by_quarter = st.checkbox("חלוקה לרבעונים")
 
     # Filter data based on selected year
     unique_categories = df["ReversedStatisticGroup"].drop_duplicates().tolist()
-    if year_selected == "All Years (mean)":
+    if year_selected == "כל השנים (ממוצע)":
         filtered_data = df
         crime_counts = (
             filtered_data.groupby("ReversedStatisticGroup").size() / len(filtered_data["Year"].unique())
@@ -288,8 +301,10 @@ elif menu_option == 'Heatmap':
     layer_name = "PoliceMerhavBoundaries"
     gdf = gpd.read_file(gdb_path, layer=layer_name)
 
+    gdf['unique_id'] = gdf.index.astype(str)  # Add a unique identifier for each geometry
+
     sorted_crimes = sorted(df['StatisticGroup'].dropna().unique(), key=lambda x: x) # sort crimes in alphabetical order
-    sorted_crimes = ['all_crimes'] + sorted_crimes
+    sorted_crimes = ['כל סוגי העבירות'] + sorted_crimes
 
     # visualization
     # Title
@@ -310,7 +325,7 @@ elif menu_option == 'Heatmap':
     )
 
     # Filter data based on user selection
-    if selected_crime == 'all_crimes':
+    if selected_crime == 'כל סוגי העבירות':
         # Group and sum all crimes by PoliceMerhav
         merhav_counts = df.groupby('PoliceMerhav').size()
     else:
@@ -320,7 +335,8 @@ elif menu_option == 'Heatmap':
     # Map the counts to the GeoDataFrame
     gdf['record_count'] = gdf['MerhavName'].map(merhav_counts).fillna(0)
 
-    # Generate the heatmap
+
+    #Generate the heatmap
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     gdf.plot(
         column='record_count',
@@ -340,10 +356,39 @@ elif menu_option == 'Heatmap':
     else:
         title_year = str(selected_year)
 
+    # plot_df = gdf.drop(columns=['geometry'])
+    #
+    # # Convert GeoDataFrame to GeoJSON format
+    # geojson_data = gdf.set_index("unique_id").geometry.__geo_interface__
+    #
+    # # Create the interactive map
+    # fig = px.choropleth_mapbox(
+    #     plot_df,
+    #     geojson=geojson_data,  # GeoJSON for the geometries
+    #     locations="unique_id",  # Use unique_id to match GeoJSON features
+    #     color="record_count",
+    #     hover_name="MerhavName",  # Display region name on hover
+    #     hover_data={"record_count": True},  # Include crime counts
+    #     mapbox_style="carto-positron",
+    #     center={"lat": 31.0461, "lon": 34.8516},  # Center map on Israel
+    #     zoom=7,
+    #     color_continuous_scale="YlOrRd",
+    #     title=f"{selected_year} - {'כל סוגי העבירות' if selected_crime == 'כל סוגי העבירות' else selected_crime[::-1]}"
+    # )
+    #
+    # # Update layout for appearance
+    # fig.update_layout(
+    #     margin={"r": 0, "t": 50, "l": 0, "b": 0},
+    #     title_font=dict(size=20, family='Arial'),
+    # )
+    #
+    # # Display the interactive map in Streamlit
+    # st.plotly_chart(fig, use_container_width=True)
 
     ax.set_title(f"{title_year} תנש רובע {reversed_selected_crime} לש םוח תפמ", fontdict={'fontsize': 16})
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
-
-    # Display the heatmap in Streamlit
     st.pyplot(fig)
+
+
+
