@@ -1,3 +1,4 @@
+import zipfile
 import plotly.express as px
 import streamlit as st
 import pandas as pd
@@ -5,6 +6,13 @@ import requests
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
+import geopandas as gpd
+from io import BytesIO
+import base64
+import fiona
+import mplcursors
+from shapely.geometry import Point
+
 
 #set page config
 st.set_page_config(page_title="Crime Dashboard", layout="wide")
@@ -67,8 +75,35 @@ def preprocess_data_district(df):
 
     return combined_df
 
+def extract_zip():
+    # נתיב לקובץ ה-ZIP שהועלה
+    zip_path = "policestationboundaries.gdb.zip"
+
+    # חלץ את התוכן לתוך קולאב
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall("PoliceStationBoundaries")
+
+    # ודא שהתיקייה קיימת
+    gdb_path = "PoliceStationBoundaries/PoliceStationBoundaries.gdb"
+    return gdb_path
+
+st.markdown("""
+    <style>
+    .block-container {
+        text-align: right;  /* יישור כל האלמנטים לימין */
+    }
+    div[data-baseweb="select"] > div {
+        direction: rtl;  /* שינוי כיוון ל-RTL */
+        text-align: right; /* יישור לימין */
+    }
+    .stCheckbox {
+        direction: rtl;  /* שינוי כיוון ל-RTL */
+        text-align: right; /* יישור לימין */
+    }
+    </style>
+""", unsafe_allow_html=True)
 # Streamlit layout
-st.title("Crime Analysis Dashboard")
+st.title("פשיעה בארץ ישראל")
 
 # side-bar navigation
 menu_option = st.sidebar.radio("Select Visualization:", ["Overview", "Heatmap", "October 7th"])
@@ -77,21 +112,41 @@ if menu_option == 'Overview':
     df = load_data()
     # OVERVIEW VISUALIZATION
     # Determine Y-axis max value before filtering
-    years = ["All Years (mean)"] + sorted(df["Year"].dropna().unique().astype(int).tolist())
-    # Sidebar filters
-    year_selected = st.selectbox("Select Year:", years, index=0)
+    years = ["כל השנים (ממוצע)"] + sorted(df["Year"].dropna().unique().astype(int).tolist())
     st.markdown("""
         <style>
-        .stSelectbox [data-baseweb="select"] {
-            width: 200px !important;
+        /* Align the selectbox text and menu to the right */
+        div[data-testid="stSelectbox"] * {
+            text-align: right !important; /* Align all text inside the dropdown */
+            direction: rtl !important;   /* Force right-to-left text direction */
+        }
+
+        /* Set a shorter width for the selectbox */
+        div[data-testid="stSelectbox"] > div {
+            width: 200px; 
+        }
+
+        /* Align the dropdown to the right */
+        div[data-testid="stSelectbox"] {
+            text-align: right;
+            direction: rtl;
+        }
+
+        /* Align checkbox text */
+        div[data-testid="stCheckbox"] * {
+            text-align: right !important;
+            direction: rtl !important;
         }
         </style>
     """, unsafe_allow_html=True)
-    split_by_quarter = st.checkbox("Split by Quarter")
+
+    # Sidebar filters
+    year_selected = st.selectbox("בחר שנה:", years, index=0)
+    split_by_quarter = st.checkbox("חלוקה לרבעונים")
 
     # Filter data based on selected year
     unique_categories = df["ReversedStatisticGroup"].drop_duplicates().tolist()
-    if year_selected == "All Years (mean)":
+    if year_selected == "כל השנים (ממוצע)":
         filtered_data = df
         crime_counts = (
             filtered_data.groupby("ReversedStatisticGroup").size() / len(filtered_data["Year"].unique())
@@ -146,9 +201,6 @@ if menu_option == 'Overview':
     # Display plot
     st.pyplot(fig)
 
-
-
-
 elif menu_option == 'October 7th':
     # Load and process data
     df = load_data()  # Ensure this function is defined and loads the correct dataset
@@ -174,7 +226,8 @@ elif menu_option == 'October 7th':
     quarters_after = 5  # Fourth quarter of 2023 to fourth quarter of 2024
 
     grouped["NormalizedCount"] = grouped.apply(
-        lambda row: row["Count"] / quarters_before if row["Period"] == "לפני ה7.10" else row["Count"] / quarters_after,
+        lambda row: round(row["Count"] / quarters_before) if row["Period"] == "לפני ה7.10"
+        else round(row["Count"] / quarters_after),
         axis=1
     )
 
@@ -186,7 +239,7 @@ elif menu_option == 'October 7th':
 
     # Title
     st.markdown(
-        '<h1 style="text-align: right; font-size: 36px; direction: rtl;">השוואת פשיעה לפי סוגי עבירות ומחוזות</h1>',
+        '<h1 style="text-align: right; font-size: 36px; direction: rtl;">התפלגות עבירות לפני ואחרי ה-7.10</h1>',
         unsafe_allow_html=True
     )
 
@@ -276,32 +329,52 @@ elif menu_option == 'October 7th':
         y_tick_interval = 100
         y_max = 1000
 
-# Generate bar chart
+    # Generate bar chart
+    pivot_df = pivot_df.sort_values(by=["לפני ה7.10", "אחרי ה7.10"], ascending=False)
+
     fig = px.bar(
         pivot_df,
         x="Category",
         y=["לפני ה7.10", "אחרי ה7.10"],
         barmode="group",
-        labels={"value": "כמות עבירות מנורמלת", "variable": "תקופה"},
+        labels={"value": "כמות עבירות מנורמלת לרבעון", "variable": "", "Category": "קטגוריה"},  # הורדת המילה "תקופה"
         title=f"פשיעה ב{selected_district}"  # Update title to "פשיעה ב"
     ).update_layout(
         xaxis_title="סוגי עבירות",
-        yaxis_title="כמות עבירות מנורמלת",
-        legend_title="תקופה",
+        yaxis_title="כמות עבירות מנורמלת לרבעון",
+        legend_title="",  # הסרת כותרת האגדה
         plot_bgcolor="#f9f9f9",
         title=dict(
             text=f"פשיעה ב{selected_district}",  # Update title to "פשיעה ב"
             x=1,  # Align title to the right
             xanchor="right",  # Anchor title to the right
-            font=dict(size=24)  # Adjust font size
+            font=dict(size=28)  # Adjust title font size
+        ),
+        xaxis=dict(
+            tickmode="array",
+            tickvals=pivot_df["Category"].tolist(),
+            ticktext=[
+                "עבירות פליליות<br>כלליות",
+                "עבירות מוסר<br>וסדר ציבורי",
+                "עבירות<br>ביטחון",
+                "עבירות<br>כלכליות ומנהליות",
+                "עבירות<br>מרמה",
+                "עבירות<br>תנועה"
+            ],
+            tickfont=dict(size=18),  # גודל הטקסט של הקטגוריות בציר X
+            title_font=dict(size=20)  # גודל הטקסט של כותרת ציר X
         ),
         yaxis=dict(
-            tickmode="linear",
-            tick0=0,
-            dtick=y_tick_interval,  # Set tick interval based on district
-            range=[0, y_max]  # Set upper limit based on district
-        )
+            tickfont=dict(size=18),  # גודל הטקסט של המספרים בציר Y
+            title_font=dict(size=20),  # גודל הטקסט של כותרת ציר Y
+            gridcolor="lightgrey",  # צבע קווים חלש יותר
+            gridwidth=0.5  # עובי קווים דק יותר
+        ),
+        legend=dict(
+            font=dict(size=18)  # גודל הטקסט של האגדה (legend)
+        ),
+        height=700  # Increase height for better visualization
     )
 
     # Display bar chart
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
