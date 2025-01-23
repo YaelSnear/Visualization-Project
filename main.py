@@ -161,6 +161,27 @@ if menu_option == 'Overview':
         filtered_data = df[df["Year"] == int(year_selected)]
         crime_counts = filtered_data["ReversedStatisticGroup"].value_counts().reindex(unique_categories, fill_value=0)
 
+    # Sort categories by total count
+    unique_categories = crime_counts.sort_values(ascending=False).index.tolist()
+
+    # Ensure consistent ordering by converting to categorical
+    df["ReversedStatisticGroup"] = pd.Categorical(
+        df["ReversedStatisticGroup"], categories=unique_categories, ordered=True
+    )
+    filtered_data["ReversedStatisticGroup"] = pd.Categorical(
+        filtered_data["ReversedStatisticGroup"], categories=unique_categories, ordered=True
+    )
+
+    ticktext = [
+        "\u202Bעבירות פליליות\nכלליות",
+        "\u202Bעבירות מוסר\nוסדר ציבורי",
+        "\u202Bעבירות\nביטחון",
+        "\u202Bעבירות\nכלכליות ומנהליות",
+        "\u202Bעבירות\nמרמה",
+        "\u202Bעבירות\nתנועה"
+    ]
+    ticktext = [text[::-1] for text in ticktext]
+
     # Generate plot
     fig, ax = plt.subplots(figsize=(10, 6))
     if split_by_quarter:
@@ -188,19 +209,35 @@ if menu_option == 'Overview':
             x="ReversedStatisticGroup",
             y="Counts",
             hue="Quarter",
-            palette=['#9CFFFA', '#6153CC', '#FFED65', '#F96E46'],
-            ax=ax
+            palette=["#FF5733", "#FFC300", "#28B463", "#1E90FF"],
+            order=unique_categories,
+            ax=ax,
+            zorder=2
         )
         ax.set_title("גוסו ןועבר יפל םיעשפה רפסמ", fontsize=16)
         ax.set_xlabel("עשפה גוס", fontsize=14)
-        ax.set_ylabel("ןועבר", fontsize=14)
+        ax.set_ylabel("תוריבעה תומכ", fontsize=14)
+        ax.set_xticks(range(len(ticktext)))  # Ensure tick positions are correct
+        ax.set_xticklabels(ticktext, rotation=0, ha='center', fontsize=12)  # Apply wrapped labels
+        ax.grid(axis='y', color='lightgrey', linewidth=0.5, zorder=0)
+
     else:
-        crime_counts.plot(kind="bar", ax=ax, color="#F96E46")
-        ax.set_title("גוס יפל םיעשפה רפסמ", fontsize=16)
+        crime_counts = crime_counts.reindex(unique_categories, fill_value=0)  # Ensure same order
+        crime_counts.index = ticktext  # Update index with wrapped labels
+        crime_counts.plot(kind="bar", ax=ax, color='orange', zorder=2)
+
+        ax.set_xticklabels(
+            ax.get_xticklabels(),
+            rotation=0,  # Keep labels horizontal
+            ha='center',  # Center-align labels
+            fontsize=12
+        )
         ax.set_xlabel("עשפה גוס", fontsize=14)
-        ax.set_ylabel("םיעשפה רפסמ", fontsize=14)
-        ax.tick_params(axis="x", labelrotation=0)
+        ax.set_ylabel("תוריבעה תומכ", fontsize=14)
         ax.set_ylim(0, 18000)
+        ax.grid(axis='y', color='lightgrey', linewidth=0.5)
+
+
 
     plt.tight_layout()
 
@@ -312,10 +349,39 @@ elif menu_option == 'Heatmap':
     gdf['record_count'] = 0  # Initialize record count for mapping
     gdf['centroid_lat'] = gdf.geometry.centroid.y
     gdf['centroid_lon'] = gdf.geometry.centroid.x
+
     # Sort and prepare dropdown options
     sorted_crimes = ['כל סוגי העבירות'] + sorted(df_all['StatisticGroup'].unique())
     sorted_merhavim = ['כל המרחבים'] + sorted(gdf['MerhavName'].unique())
     years = ['לאורך כל השנים', 2020, 2021, 2022, 2023, 2024]
+    gdf['unique_id'] = gdf.index
+
+    st.markdown(
+        """
+        <style>
+        /* Align dropdown menus to the right and reduce their width */
+        .stSelectbox > div {
+            direction: rtl; /* Make text right-to-left for Hebrew */
+            text-align: right; /* Align text inside the dropdown */
+            width: 200px; /* Reduce dropdown width */
+            margin-left: auto; /* Push dropdown to the right */
+            margin-right: 0; /* Remove extra margin */
+        }
+
+        /* Align titles and labels to the right */
+        .stText {
+            text-align: right; /* Align Streamlit text elements to the right */
+            direction: rtl; /* Right-to-left direction for Hebrew */
+        }
+        /* Align all text elements (labels, titles) to the right */
+        .stMarkdown, .stSelectbox label {
+            text-align: right; /* Align text to the right */
+            direction: rtl; /* Right-to-left direction for Hebrew */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
     # Streamlit layout
     st.title("מפת חום - עבירות משטרת ישראל")
@@ -340,15 +406,20 @@ elif menu_option == 'Heatmap':
     fig = px.choropleth_mapbox(
         gdf,
         geojson=json.loads(gdf.to_json()),
-        locations=gdf.index,
+        locations='unique_id',
         color="record_count",
         hover_name="MerhavName",
-        hover_data={"record_count": True, gdf.index.name: False},  # Show record count, hide index
+        hover_data={"record_count": True, 'unique_id': False},  # Exclude "unique_id" from tooltips
         mapbox_style="carto-positron",
         center={"lat": 31.5, "lon": 34.8},  # Centered on Israel
         zoom=6.3,  # Adjusted zoom level to fit Israel
-        color_continuous_scale="YlOrRd",
-        title=f"{selected_year} מפת עבירות" if selected_year != 'לאורך כל השנים' else "2020-2024 מפת עבירות"
+        # color_continuous_scale="Pinkyl",
+        title=f"{selected_year} מפת עבירות" if selected_year != 'לאורך כל השנים' else "2020-2024 מפת עבירות",
+        labels={"record_count": "מספר עבירות"}
+    )
+
+    fig.update_traces(
+        reversescale=True  # Set to True if you want to reverse light-to-dark order
     )
 
     # Update layout for vertical orientation
@@ -359,7 +430,8 @@ elif menu_option == 'Heatmap':
             style="carto-positron"
         ),
         height=800,  # Taller map for vertical orientation
-        width=500  # Narrower map
+        width=500,
+        title_x=0.4# Narrower map
     )
     # Display the map
     st.plotly_chart(fig, use_container_width=True)
