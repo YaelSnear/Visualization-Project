@@ -88,6 +88,21 @@ def extract_zip():
     gdb_path = "PoliceStationBoundaries/PoliceStationBoundaries.gdb"
     return gdb_path
 
+def display_crime_categories():
+    st.markdown("""
+    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.6;">
+    ### חלוקת עבירות לקבוצות
+    במסגרת הניתוח, חילקנו את העבירות לקבוצות הבאות:
+    - **עבירות פליליות כלליות**: עבירות כלפי הרכוש, עבירות נגד גוף, עבירות נגד אדם, עבירות מין.
+    - **עבירות מוסר וסדר ציבורי**: עבירות כלפי המוסר, עבירות סדר ציבורי.
+    - **עבירות ביטחון**: עבירות ביטחון.
+    - **עבירות כלכליות ומנהליות**: עבירות כלכליות, עבירות מנהליות, עבירות רשוי.
+    - **עבירות תנועה**: עבירות תנועה.
+    - **עבירות מרמה**: עבירות מרמה.
+    </div>
+    """, unsafe_allow_html=True)
+
+
 st.markdown("""
     <style>
     .block-container {
@@ -105,7 +120,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 # Streamlit layout
-st.title("פשיעה בארץ ישראל")
+st.title("פשיעה במדינת ישראל בשנים 2020-2024")
 
 st.markdown(
     """
@@ -122,11 +137,65 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# # side-bar navigation
-menu_option = st.sidebar.radio("Select Visualization:", ["Overview", "Heatmap", "October 7th"])
+# Sidebar with radio buttons
+st.sidebar.title("בחרו שאלת מחקר:")
+menu_option = st.sidebar.radio(
+    "",
+    [
+        "התפלגות הפשיעה בישראל לאורך השנים",
+        "התפלגות סוגי עבירות לפי מרחבים משטרתיים",
+        "השפעות מאורעות ה-7.10.2023 על התפלגות הפשיעה בישראל"
+    ]
+)
+
+# Inject custom CSS to align the sidebar content
+st.markdown("""
+    <style>
+    section[data-testid="stSidebar"] {
+        direction: rtl;
+        text-align: right;
+    }
+
+    div[data-testid="stRadio"] > label {
+        direction: rtl;
+        text-align: right;
+        margin-right: 10px;
+    }
+
+    div[data-testid="stRadio"] > div {
+        text-align: right;
+        direction: rtl;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 
-if menu_option == 'Overview':
+if menu_option == 'התפלגות הפשיעה בישראל לאורך השנים':
+    st.markdown("""
+    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.6;">
+    ברוכים הבאים לדף לניתוח ויזואלי של נתוני הפשיעה במדינת ישראל בין השנים 2020–2024. 
+    דף זה נועד להציג תובנות ומגמות מתוך נתוני הפשיעה, תוך חלוקה לסוגי עבירות, מחוזות גיאוגרפיים והשפעתם של אירועים מרכזיים.
+
+    באמצעות כלי ניתוח אינטראקטיביים, תוכלו לבחון את ההתפלגויות השונות, להשוות בין תקופות זמן ולגלות תובנות חדשות על השינויים שחלו לאורך השנים. 
+    אנו מזמינים אתכם להשתמש בממשק זה לחקירה מעמיקה של נתוני הפשיעה בישראל ולקבלת תמונה רחבה ומדויקת יותר על הנושא.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.8;">
+    <h3>חלוקת עבירות לקבוצות</h3>
+    במסגרת הניתוח, חילקנו את העבירות לקבוצות הבאות:
+    <ul>
+        <li><strong>עבירות פליליות כלליות:</strong> עבירות כלפי הרכוש, עבירות נגד גוף, עבירות נגד אדם, עבירות מין.</li>
+        <li><strong>עבירות מוסר וסדר ציבורי:</strong> עבירות כלפי המוסר, עבירות סדר ציבורי.</li>
+        <li><strong>עבירות ביטחון:</strong> עבירות ביטחון.</li>
+        <li><strong>עבירות כלכליות ומנהליות:</strong> עבירות כלכליות, עבירות מנהליות, עבירות רשוי.</li>
+        <li><strong>עבירות תנועה:</strong> עבירות תנועה.</li>
+        <li><strong>עבירות מרמה:</strong> עבירות מרמה.</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
     df = load_data()
     # OVERVIEW VISUALIZATION
     # Determine Y-axis max value before filtering
@@ -273,7 +342,7 @@ if menu_option == 'Overview':
 
 
 
-elif menu_option == 'October 7th':
+elif menu_option == 'השפעות מאורעות ה-7.10.2023 על התפלגות הפשיעה בישראל':
     # Load and process data
     df = load_data()  # Ensure this function is defined and loads the correct dataset
     df["Quarter"] = df["Quarter"].str.extract(r"(\d)").astype(float)
@@ -315,6 +384,33 @@ elif menu_option == 'October 7th':
         unsafe_allow_html=True
     )
 
+    st.markdown("""
+    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.6;">
+    הנתונים המוצגים בעמוד זה מתמקדים בהשוואת הפשיעה לפני ואחרי אירועי ה-7 באוקטובר 2023. 
+    חלוקה זו מאפשרת להבין את השינויים שחלו במגמות הפשיעה בתקופה שלאחר האירועים ביחס לעבר.
+
+    הגרף מציג את כמות העבירות המנורמלת לרבעון, תוך חלוקה לסוגי עבירות עיקריים, ומאפשר זיהוי הבדלים במגמות לאורך הזמן. 
+    ניתן לסנן את המידע על פי מחוז משטרתי ולבחון כיצד הושפעו אזורים גיאוגרפיים שונים.
+
+    מטרת הניתוח היא לספק תובנות מעמיקות על השלכות האירועים.
+    </div>
+    """, unsafe_allow_html=True)
+
+
+    st.markdown("""
+    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.8;">
+    <h3>חלוקת עבירות לקבוצות</h3>
+    במסגרת הניתוח, חילקנו את העבירות לקבוצות הבאות:
+    <ul>
+        <li><strong>עבירות פליליות כלליות:</strong> עבירות כלפי הרכוש, עבירות נגד גוף, עבירות נגד אדם, עבירות מין.</li>
+        <li><strong>עבירות מוסר וסדר ציבורי:</strong> עבירות כלפי המוסר, עבירות סדר ציבורי.</li>
+        <li><strong>עבירות ביטחון:</strong> עבירות ביטחון.</li>
+        <li><strong>עבירות כלכליות ומנהליות:</strong> עבירות כלכליות, עבירות מנהליות, עבירות רשוי.</li>
+        <li><strong>עבירות תנועה:</strong> עבירות תנועה.</li>
+        <li><strong>עבירות מרמה:</strong> עבירות מרמה.</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("""
         <style>
         /* Style for the selectbox to reduce its width */
@@ -422,7 +518,7 @@ elif menu_option == 'October 7th':
     # Display bar chart
     st.plotly_chart(fig, use_container_width=True)
 
-elif menu_option == 'Heatmap':
+elif menu_option == 'התפלגות סוגי עבירות לפי מרחבים משטרתיים':
 
     gdb_path = extract_zip()
     df_all = pd.read_csv('clean_df_heatmap.csv')
@@ -470,6 +566,31 @@ elif menu_option == 'Heatmap':
 
     # Streamlit layout
     st.title("מפת חום - עבירות משטרת ישראל")
+    st.markdown("""
+    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.6;">
+    מפת החום מציגה את התפלגות הפשיעה במדינת ישראל בחלוקה לפי מרחבים משטרתיים. 
+    ניתן לראות את המידע בצורה ויזואלית ולהבין אילו מרחבים סובלים יותר מפשיעה, ובאילו סוגי עבירות. 
+
+    באמצעות הכלים האינטראקטיביים בדף זה, תוכלו לסנן את המידע לפי סוג העבירה והשנה המבוקשת, ולבחון את הפערים בין מרחבים שונים. 
+    הניתוח מאפשר להעמיק את ההבנה בדבר המגמות הגיאוגרפיות של פשיעה במדינת ישראל.
+
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.8;">
+    <h3>חלוקת עבירות לקבוצות</h3>
+    במסגרת הניתוח, חילקנו את העבירות לקבוצות הבאות:
+    <ul>
+        <li><strong>עבירות פליליות כלליות:</strong> עבירות כלפי הרכוש, עבירות נגד גוף, עבירות נגד אדם, עבירות מין.</li>
+        <li><strong>עבירות מוסר וסדר ציבורי:</strong> עבירות כלפי המוסר, עבירות סדר ציבורי.</li>
+        <li><strong>עבירות ביטחון:</strong> עבירות ביטחון.</li>
+        <li><strong>עבירות כלכליות ומנהליות:</strong> עבירות כלכליות, עבירות מנהליות, עבירות רשוי.</li>
+        <li><strong>עבירות תנועה:</strong> עבירות תנועה.</li>
+        <li><strong>עבירות מרמה:</strong> עבירות מרמה.</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
 
     # Dropdowns for user selection
     selected_crime = st.selectbox("בחר סוג עבירה:", options=sorted_crimes)
