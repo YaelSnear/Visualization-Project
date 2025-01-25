@@ -392,7 +392,6 @@ elif menu_option == 'השפעות מאורעות ה-7.10.2023 על התפלגו�
     הגרף מציג את כמות העבירות המנורמלת לרבעון, תוך חלוקה לסוגי עבירות עיקריים, ומאפשר זיהוי הבדלים במגמות לאורך הזמן. 
     ניתן לסנן את המידע על פי מחוז משטרתי ולבחון כיצד הושפעו אזורים גיאוגרפיים שונים.
 
-    מטרת הניתוח היא לספק תובנות מעמיקות על השלכות האירועים.
     </div>
     """, unsafe_allow_html=True)
 
@@ -519,7 +518,6 @@ elif menu_option == 'השפעות מאורעות ה-7.10.2023 על התפלגו�
     st.plotly_chart(fig, use_container_width=True)
 
 elif menu_option == 'התפלגות סוגי עבירות לפי מרחבים משטרתיים':
-
     gdb_path = extract_zip()
     df_all = pd.read_csv('clean_df_heatmap.csv')
     layer_name = "PoliceMerhavBoundaries"
@@ -567,30 +565,30 @@ elif menu_option == 'התפלגות סוגי עבירות לפי מרחבים מ
     # Streamlit layout
     st.title("מפת חום - עבירות משטרת ישראל")
     st.markdown("""
-    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.6;">
-    מפת החום מציגה את התפלגות הפשיעה במדינת ישראל בחלוקה לפי מרחבים משטרתיים. 
-    ניתן לראות את המידע בצורה ויזואלית ולהבין אילו מרחבים סובלים יותר מפשיעה, ובאילו סוגי עבירות. 
+     <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.6;">
+     מפת החום מציגה את התפלגות הפשיעה במדינת ישראל בחלוקה לפי מרחבים משטרתיים. 
+     ניתן לראות את המידע בצורה ויזואלית ולהבין אילו מרחבים סובלים יותר מפשיעה, ובאילו סוגי עבירות. 
 
-    באמצעות הכלים האינטראקטיביים בדף זה, תוכלו לסנן את המידע לפי סוג העבירה והשנה המבוקשת, ולבחון את הפערים בין מרחבים שונים. 
-    הניתוח מאפשר להעמיק את ההבנה בדבר המגמות הגיאוגרפיות של פשיעה במדינת ישראל.
+     באמצעות הכלים האינטראקטיביים בדף זה, תוכלו לסנן את המידע לפי סוג העבירה והשנה המבוקשת, ולבחון את הפערים בין מרחבים שונים. 
+     הניתוח מאפשר להעמיק את ההבנה בדבר המגמות הגיאוגרפיות של פשיעה במדינת ישראל.
 
-    </div>
-    """, unsafe_allow_html=True)
+     </div>
+     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.8;">
-    <h3>חלוקת עבירות לקבוצות</h3>
-    במסגרת הניתוח, חילקנו את העבירות לקבוצות הבאות:
-    <ul>
-        <li><strong>עבירות פליליות כלליות:</strong> עבירות כלפי הרכוש, עבירות נגד גוף, עבירות נגד אדם, עבירות מין.</li>
-        <li><strong>עבירות מוסר וסדר ציבורי:</strong> עבירות כלפי המוסר, עבירות סדר ציבורי.</li>
-        <li><strong>עבירות ביטחון:</strong> עבירות ביטחון.</li>
-        <li><strong>עבירות כלכליות ומנהליות:</strong> עבירות כלכליות, עבירות מנהליות, עבירות רשוי.</li>
-        <li><strong>עבירות תנועה:</strong> עבירות תנועה.</li>
-        <li><strong>עבירות מרמה:</strong> עבירות מרמה.</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
+     <div style="text-align: right; direction: rtl; font-size: 18px; line-height: 1.8;">
+     <h3>חלוקת עבירות לקבוצות</h3>
+     במסגרת הניתוח, חילקנו את העבירות לקבוצות הבאות:
+     <ul>
+         <li><strong>עבירות פליליות כלליות:</strong> עבירות כלפי הרכוש, עבירות נגד גוף, עבירות נגד אדם, עבירות מין.</li>
+         <li><strong>עבירות מוסר וסדר ציבורי:</strong> עבירות כלפי המוסר, עבירות סדר ציבורי.</li>
+         <li><strong>עבירות ביטחון:</strong> עבירות ביטחון.</li>
+         <li><strong>עבירות כלכליות ומנהליות:</strong> עבירות כלכליות, עבירות מנהליות, עבירות רשוי.</li>
+         <li><strong>עבירות תנועה:</strong> עבירות תנועה.</li>
+         <li><strong>עבירות מרמה:</strong> עבירות מרמה.</li>
+     </ul>
+     </div>
+     """, unsafe_allow_html=True)
 
     # Dropdowns for user selection
     selected_crime = st.selectbox("בחר סוג עבירה:", options=sorted_crimes)
@@ -619,7 +617,7 @@ elif menu_option == 'התפלגות סוגי עבירות לפי מרחבים מ
         mapbox_style="carto-positron",
         center={"lat": 31.5, "lon": 34.8},  # Centered on Israel
         zoom=6.3,  # Adjusted zoom level to fit Israel
-        # color_continuous_scale="Pinkyl",
+        color_continuous_scale="Reds",
         title=f"{selected_year} מפת עבירות" if selected_year != 'לאורך כל השנים' else "2020-2024 מפת עבירות",
         labels={"record_count": "מספר עבירות"}
     )
@@ -637,7 +635,8 @@ elif menu_option == 'התפלגות סוגי עבירות לפי מרחבים מ
         ),
         height=800,  # Taller map for vertical orientation
         width=500,
-        title_x=0.4# Narrower map
+        title_x=0.4  # Narrower map
     )
     # Display the map
     st.plotly_chart(fig, use_container_width=True)
+
